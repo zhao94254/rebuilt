@@ -10,5 +10,6 @@ Config = {
     "douyu":{
         'minnum': 100000,
         'maxlink': 100,
+        'taskname': 'douyu|task',
     }
 }
