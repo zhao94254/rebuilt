@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"github.com/garyburd/redigo/redis"
 )
 
 // 主要的处理逻辑
@@ -17,10 +18,8 @@ const (
 	ServerAddr  = "openbarrage.douyutv.com:8601"
 	PostCode = 689
 	PullCode = 690
+	wtf = "asd"
 )
-
-
-
 
 func PostData(msg string) []byte {
 	// 构造需要发送的二进制数据
@@ -118,7 +117,7 @@ func Connect(roomid string)  {
 	conn.Close()
 }
 
-func CountConnect(roomid string, count *SafeMap)  {
+func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
 	conn := PreConn(roomid)
 	timestamp := time.Now().Unix()
 	for  {
@@ -135,12 +134,12 @@ func CountConnect(roomid string, count *SafeMap)  {
 			//fmt.Printf("user: %s  danmu: %s level: %s room: %s \n", parsed["nn"], parsed["txt"], parsed["level"], parsed["rid"])
 			key := fmt.Sprintf("%s", parsed["rid"])
 			count.add(key)
-			//if count.Map[key] > 100 && count.Map[key] % 100 == 1{
-			//	fmt.Println(count.Map)
-			//}
+			if count.Map[key] > 100 && count.Map[key] % 100 == 1{
+				fmt.Println(count.Map)
+			}
 		}
 
-		if count.readMap("timer") > time.Now().Unix(){
+		if count.readMap("timer") < time.Now().Unix(){ // 按照一分钟 五分钟 半个小时为维度进行保存
 			fmt.Println("redis_client..dump")
 			fmt.Println(count.Map)
 			count.setValue("timer", time.Now().Unix()+30)
@@ -150,8 +149,11 @@ func CountConnect(roomid string, count *SafeMap)  {
 	conn.Close()
 }
 
+// 将字典的数据保存进去。。
+func mapRedis(mapData map[string]int64 ,redisC redis.Conn)  {
+	for k, v := range mapData{
+		redisC.Do("SET", k, v)
+	}
+}
 
-
-
-
-
+// oneMinData five ..

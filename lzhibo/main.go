@@ -4,9 +4,9 @@ import (
 	"time"
 	"fmt"
 	"net/http"
-	"github.com/garyburd/redigo/redis"
 	"strings"
 	"./base"
+	"github.com/garyburd/redigo/redis"
 )
 
 const taskurl  = "http://127.0.0.1:5000/task"
@@ -24,8 +24,12 @@ func newSafe() *base.SafeMap {
 	return sm
 }
 
-func getData()  {
+func redisClient() redis.Conn {
+	c, _ := redis.Dial("tcp", "127.0.0.1:6379")
+	return c
+}
 
+func getData()  {
 	count := newSafe()
 	count.Map["timer"] = time.Now().Unix()+30 // 保存数据
 	timerA := time.Now().Unix()+60 // 更新task花费的时间
@@ -45,44 +49,20 @@ func getData()  {
 
 func longLink(count *base.SafeMap)  {
 	fmt.Println("start longlink")
+	c  := redisClient()
 	ch := make(chan string)
 	rooms := getTask()
 	for _, i := range rooms{
-		go base.CountConnect(i, count)
+		go base.CountConnect(i, count, c)
 	}
 	for i:=1;i<len(rooms) ;i++  {
 		<-ch
 	}
 }
 
-
-func start()  {
-	timerA := time.Now().Unix()+10
-	timerB := time.Now().Unix()+5
-	fmt.Println(timerA, timerA)
-	for {
-		if time.Now().Unix() >= timerA{
-			resp, _ := http.Get(taskurl) // 更新一次
-			fmt.Println(resp)
-			timerA = time.Now().Unix()+10
-		}
-		if time.Now().Unix() >= timerB{
-			fmt.Println(getTask())
-			timerB = time.Now().Unix()+5
-		}
-
-
-	}
-}
-
-
 func getTask() []string{
-	c, err := redis.Dial("tcp", "127.0.0.1:6379")
-	if err != nil {
-		fmt.Println("Connect to redis error", err)
-		return nil
-	}
-	u, err := redis.String(c.Do("GET", "douyu|task"))
+	c := redisClient()
+	u, _ := redis.String(c.Do("GET", "douyu|task"))
 
 	defer c.Close()
 	return strings.Split(u, "|")
