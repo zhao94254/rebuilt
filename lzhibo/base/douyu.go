@@ -8,7 +8,6 @@ import (
 	"errors"
 	"strings"
 	"time"
-	"github.com/garyburd/redigo/redis"
 )
 
 // 主要的处理逻辑
@@ -19,6 +18,9 @@ const (
 	PostCode = 689
 	PullCode = 690
 )
+
+
+
 
 func PostData(msg string) []byte {
 	// 构造需要发送的二进制数据
@@ -132,11 +134,18 @@ func CountConnect(roomid string, count *SafeMap)  {
 		if parsed["type"] == "chatmsg"{
 			//fmt.Printf("user: %s  danmu: %s level: %s room: %s \n", parsed["nn"], parsed["txt"], parsed["level"], parsed["rid"])
 			key := fmt.Sprintf("%s", parsed["rid"])
-			count.writeMap(key)
-			if count.Map[key] > 100 && count.Map[key] % 100 == 1{
-				fmt.Println(count.Map)
-			}
+			count.add(key)
+			//if count.Map[key] > 100 && count.Map[key] % 100 == 1{
+			//	fmt.Println(count.Map)
+			//}
 		}
+
+		if count.readMap("timer") > time.Now().Unix(){
+			fmt.Println("redis_client..dump")
+			fmt.Println(count.Map)
+			count.setValue("timer", time.Now().Unix()+30)
+		}
+
 	}
 	conn.Close()
 }

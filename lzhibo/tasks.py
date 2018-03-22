@@ -5,6 +5,8 @@ from config import *
 import requests
 import json
 
+
+
 # directory: link image onlinenum directoryname
 
 # streamer : link image onlinenum streamername
@@ -44,14 +46,19 @@ class Douyu:
             redis_client.set("douyu|basedata", json.dumps(data))
         else:
             self.base_data = json.loads(redis_client.get("douyu|basedata").decode())['data']
-            self.parse_directory()
+        self.parse_directory()
+
 
     def getonline(self):
         """ 解析用户数据"""
+        result = []
         for i in self.base_data:
             res = requests.get(self.baselink.format(i['short_name'])).json()['data']
             self.directory_info[i['short_name']]['num'] = sum([i['online'] for i in res])
+            redis_client.set("douyu|directorys", '|'.join(self.directory_info.keys())) # 加载所有频道的key
+            redis_client.set(i['short_name'], self.directory_info[i['short_name']])# 加载频道信息
             for j in res:
+                print("call")
                 if j['online'] > self.minnum: # 这里通过config来配置
                     self.streammer_info[j['room_id']] = {
                         'roomid': j['room_id'],
@@ -61,7 +68,11 @@ class Douyu:
                         'image': j['avatar_mid'],
                         'pindao': i
                     }
-                yield j['room_id']
+                    redis_client.set(j['room_id'], self.streammer_info[j['room_id']]) # 加载房间信息
+
+                    result.append(j['room_id'])
+        return result
+
 
     def parse_directory(self):
         """ 解析频道相关"""
@@ -85,7 +96,7 @@ class Douyu:
             else:
                 res.append(j)
         res = '|'.join(res)
-        redis_client.set(self.taskname, res)
+        redis_client.set(self.taskname, res) # 加载所有的roomid
         return redis_client.get(self.taskname) # decode 的时候通过分割 | 来实现
 
 
