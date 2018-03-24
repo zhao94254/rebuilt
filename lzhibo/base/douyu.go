@@ -134,15 +134,15 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
 			//fmt.Printf("user: %s  danmu: %s level: %s room: %s \n", parsed["nn"], parsed["txt"], parsed["level"], parsed["rid"])
 			key := fmt.Sprintf("%s", parsed["rid"])
 			count.add(key)
-			if count.Map[key] > 100 && count.Map[key] % 100 == 1{
-				fmt.Println(count.Map)
-			}
 		}
 
-		if count.readMap("timer") < time.Now().Unix(){ // 按照一分钟 五分钟 半个小时为维度进行保存
-			fmt.Println("redis_client..dump")
-			fmt.Println(count.Map)
-			count.setValue("timer", time.Now().Unix()+30)
+		if count.readMap("one|timer") < time.Now().Unix(){ // 按照一分钟 五分钟 半个小时为维度进行保存
+			count.setValue("one|timer", time.Now().Unix()+60)
+			oneMinData(count.Map, redisC)
+		}
+		if count.readMap("five|timer") < time.Now().Unix(){ // 按照一分钟 五分钟 半个小时为维度进行保存
+			count.setValue("five|timer", time.Now().Unix()+60*5)
+			fiveMinData(count.Map, redisC)
 		}
 
 	}
@@ -153,6 +153,7 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
 
 
 func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
+	fmt.Println("one count", mapData)
 	for k, v := range mapData{
 		key := "one|"+k
 		u, _ := redis.Int64(redisC.Do("GET", key))
@@ -161,6 +162,7 @@ func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 }
 
 func fiveMinData(mapData map[string]int64 ,redisC redis.Conn)  {
+	fmt.Println("five count", mapData)
 	for k, v := range mapData{
 		key := "five|"+k
 		u, _ := redis.Int64(redisC.Do("GET", key))
