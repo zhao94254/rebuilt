@@ -150,10 +150,20 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
 }
 
 // 将字典的数据保存进去。。
-func mapRedis(mapData map[string]int64 ,redisC redis.Conn)  {
+
+
+func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 	for k, v := range mapData{
-		redisC.Do("SET", k, v)
+		key := "one|"+k
+		u, _ := redis.Int64(redisC.Do("GET", key))
+		redisC.Do("SET", key, v-u)
 	}
 }
 
-// oneMinData five ..
+func fiveMinData(mapData map[string]int64 ,redisC redis.Conn)  {
+	for k, v := range mapData{
+		key := "five|"+k
+		u, _ := redis.Int64(redisC.Do("GET", key))
+		redisC.Do("SET", key, v-u)
+	}
+}
