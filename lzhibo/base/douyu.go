@@ -157,7 +157,12 @@ func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 	for k, v := range mapData{
 		key := "one|"+k
 		u, _ := redis.Int64(redisC.Do("GET", key))
-		redisC.Do("SET", key, v-u)
+		if v < u{ // fix bug. mapdata中的数据会重新开始增加，而redis中的不会。
+			redisC.Do("SET", key, v)
+		}else {
+			redisC.Do("SET", key, v-u)
+		}
+
 	}
 }
 
@@ -166,6 +171,10 @@ func fiveMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 	for k, v := range mapData{
 		key := "five|"+k
 		u, _ := redis.Int64(redisC.Do("GET", key))
-		redisC.Do("SET", key, v-u)
+		if v < u{
+			redisC.Do("SET", key, v)
+		}else {
+			redisC.Do("SET", key, v-u)
+		}
 	}
 }

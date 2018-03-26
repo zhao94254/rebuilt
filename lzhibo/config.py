@@ -9,7 +9,7 @@ redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 Config = {
     "douyu":{
         'minnum': 100000,
-        'maxlink': 100,
+        'maxlink': 60,
         'taskname': 'douyu|task',
     }
 }
