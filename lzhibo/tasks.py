@@ -54,6 +54,8 @@ class Douyu:
         result = []
         for i in self.base_data:
             res = requests.get(self.baselink.format(i['short_name'])).json()['data']
+            if not isinstance(res, list):
+                continue
             self.directory_info[i['short_name']]['num'] = sum([i['online'] for i in res])
             redis_client.set("douyu|directorys", '|'.join(self.directory_info.keys())) # 加载所有频道的key
             redis_client.set(i['short_name'], self.directory_info[i['short_name']])# 加载频道信息

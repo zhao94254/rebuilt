@@ -20,14 +20,16 @@ app = Flask(__name__)
 
 @app.route('/task')
 def task():
-    print(Douyu().gettasks())
-    return ""
+    res = Douyu().gettasks()
+    return res
 
-@app.route('/<string:key>')
+@app.route('/g/<string:key>')
 def data(key):
     return redis_client.get(key)
 
-
+@app.route("/keys")
+def keys():
+    return str(redis_client.keys())
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", debug=True)
