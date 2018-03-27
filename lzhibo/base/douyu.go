@@ -65,7 +65,8 @@ func ParseData(conn net.Conn) map[string]interface{} {
 	Parsed := make(map[string]interface{})
 	str, err := PreParse(conn)
 	if err != nil{
-		fmt.Println(err)
+		// fmt.Println(err)
+		return nil
 	}
 
 	s := strings.Trim(str, "/")
@@ -103,6 +104,11 @@ func Connect(roomid string)  {
 	for  {
 		parsed := ParseData(conn) // type: dgb - gift, chatmsg - danmu , uenter - enter
 		// nn - nickname  level  txt
+		if parsed == nil{
+			conn.Close()
+			break
+		}
+
 		if time.Now().Unix() - timestamp > 21{
 			timestamp = time.Now().Unix()
 			_, err := conn.Write(PostData(fmt.Sprintf("type@=keeplive/tick@=%s/", timestamp)))
