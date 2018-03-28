@@ -47,7 +47,7 @@ func getData()  {
 			longLink(count)
 			timerB = time.Now().Unix()+60*30-1
 		}
-                first = false
+			first = false
 	}
 }
 

@@ -133,7 +133,8 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
 			timestamp = time.Now().Unix()
 			_, err := conn.Write(PostData(fmt.Sprintf("type@=keeplive/tick@=%s/", timestamp)))
 			if err != nil{
-				fmt.Println("心跳失败")
+				conn.Close()
+				return
 			}
 		}
 		if parsed["type"] == "chatmsg"{
@@ -161,6 +162,9 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
 func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 	fmt.Println("one count", mapData)
 	for k, v := range mapData{
+		if k == "one|timer" || k == "five|timer"{
+			continue
+		}
 		key := "one|"+k
 		u, _ := redis.Int64(redisC.Do("GET", key))
 		if v < u{ // fix bug. mapdata中的数据会重新开始增加，而redis中的不会。
@@ -175,6 +179,9 @@ func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 func fiveMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 	fmt.Println("five count", mapData)
 	for k, v := range mapData{
+		if k == "one|timer" || k == "five|timer"{
+			continue
+		}
 		key := "five|"+k
 		u, _ := redis.Int64(redisC.Do("GET", key))
 		if v < u{
