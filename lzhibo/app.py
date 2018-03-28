@@ -4,7 +4,7 @@
 # @Author  : zpy
 # @Software: PyCharm
 
-from flask import Flask
+from flask import Flask, jsonify
 from tasks import Douyu, redis_client
 
 
@@ -31,5 +31,13 @@ def data(key):
 def keys():
     return str(redis_client.keys())
 
+@app.route("/onerank")
+def rank():
+    data = {}
+    _keys = [i.decode() for i in redis_client.keys() if i.decode().startswith("one|")]
+    for k in _keys:
+        data[k] = redis_client.get(k)
+    return jsonify(data)
+
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="127.0.0.1", debug=True)
