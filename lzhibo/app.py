@@ -36,8 +36,18 @@ def rank():
     data = {}
     _keys = [i.decode() for i in redis_client.keys() if i.decode().startswith("one|")]
     for k in _keys:
-        data[k] = redis_client.get(k)
+        data[k] = redis_client.get(k).decode()
     return jsonify(data)
 
+@app.route("/fiverank")
+def frank():
+    data = {}
+    _keys = [i.decode() for i in redis_client.keys() if i.decode().startswith("five|")]
+    for k in _keys:
+        data[k] = redis_client.get(k).decode()
+    return jsonify(data)
+
+
+
 if __name__ == '__main__':
-    app.run(host="127.0.0.1", debug=True)
+    app.run(host="0.0.0.0", debug=True)
