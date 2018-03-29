@@ -56,9 +56,9 @@ class Douyu:
             res = requests.get(self.baselink.format(i['short_name'])).json()['data']
             if not isinstance(res, list):
                 continue
-            self.directory_info[i['short_name']]['num'] = sum([i['online'] for i in res])
+            self.directory_info[i['short_name']]['hots'] = sum([i['online'] for i in res])
             redis_client.set("douyu|directorys", '|'.join(self.directory_info.keys())) # 加载所有频道的key
-            redis_client.set(i['short_name'], self.directory_info[i['short_name']])# 加载频道信息
+            redis_client.set(i['short_name'], json.dumps(self.directory_info[i['short_name']]))# 加载频道信息
             for j in res:
                 print("call")
                 if j['online'] > self.minnum: # 这里通过config来配置
@@ -70,7 +70,7 @@ class Douyu:
                         'image': j['avatar_mid'],
                         'pindao': i
                     }
-                    redis_client.set(j['room_id'], self.streammer_info[j['room_id']]) # 加载房间信息
+                    redis_client.set(j['room_id'], json.dumps(self.streammer_info[j['room_id']])) # 加载房间信息
 
                     result.append(j['room_id'])
         return result

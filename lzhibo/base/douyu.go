@@ -8,7 +8,7 @@ import (
 	"errors"
 	"strings"
 	"time"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
 // 主要的处理逻辑

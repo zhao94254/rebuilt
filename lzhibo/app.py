@@ -6,7 +6,7 @@
 
 from flask import Flask, jsonify
 from tasks import Douyu, redis_client
-
+import json
 
 # Redis key
 # douyu|basedata   douyu|directorys(short_name)   douyu|task(roomid)
@@ -33,21 +33,44 @@ def keys():
 
 @app.route("/onerank")
 def rank():
-    data = {}
-    _keys = [i.decode() for i in redis_client.keys() if i.decode().startswith("one|")]
-    for k in _keys:
-        data[k] = redis_client.get(k).decode()
+    data = sorted_data("one")
     return jsonify(data)
 
 @app.route("/fiverank")
 def frank():
-    data = {}
-    _keys = [i.decode() for i in redis_client.keys() if i.decode().startswith("five|")]
-    for k in _keys:
-        data[k] = redis_client.get(k).decode()
+    data = sorted_data("one")
     return jsonify(data)
 
+@app.route("/prank")
+def prank():
+    data = pdata()
+    return jsonify(data)
 
+def sorted_data(long):
+    _keys = redis_client.get("douyu|task").decode()
+    data = []
+    tmp = {}
+    for k in _keys.split('|'):
+        tmp["user"] = json.loads(redis_client.get(k))
+        tmp["user"]['hots'] = int(redis_client.get("{}|{}".format(long, k)))
+        data.append(tmp)
+        tmp = {}
+    data = sorted(data, key=lambda x: -x["user"]["hots"])
+    return data
+
+def pdata():
+    _keys = redis_client.get("douyu|directorys").decode()
+    data = []
+    tmp = {}
+    for k in _keys.split('|'):
+        value = redis_client.get(k)
+        if value is None:
+            continue
+        tmp["directory"] = json.loads(value)
+        data.append(tmp)
+        tmp = {}
+    data = sorted(data, key=lambda x: -x["directory"]["hots"])
+    return data
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", debug=True)
