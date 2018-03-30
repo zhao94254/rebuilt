@@ -38,7 +38,7 @@ def rank():
 
 @app.route("/fiverank")
 def frank():
-    data = sorted_data("one")
+    data = sorted_data("five")
     return jsonify(data)
 
 @app.route("/prank")
@@ -52,7 +52,10 @@ def sorted_data(long):
     tmp = {}
     for k in _keys.split('|'):
         tmp["user"] = json.loads(redis_client.get(k))
-        tmp["user"]['hots'] = int(redis_client.get("{}|{}".format(long, k)))
+        hots = redis_client.get("{}|{}".format(long, k))
+        if hots is None:
+            hots = 0
+        tmp["user"]['hots'] = int(hots)
         data.append(tmp)
         tmp = {}
     data = sorted(data, key=lambda x: -x["user"]["hots"])

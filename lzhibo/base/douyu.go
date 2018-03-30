@@ -167,12 +167,12 @@ func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 		}
 		key := "one|"+k
 		hisKey := "onehis|" + k
-		u, _ := redis.Int64(redisC.Do("GET", hisKey))
-		if u > v{ // 重启后新获取的是会小于旧的累计的数据的， 进行重置
+		hisdata, _ := redis.Int64(redisC.Do("GET", hisKey))
+		if hisdata > v{ // 重启后新获取的是会小于旧的累计的数据的， 进行重置
 			redisC.Do("SET", key, v) // 保存历史的数据
 			redisC.Do("SET", hisKey, v)
 		}else{
-			redisC.Do("SET", key, v - u) // 用历史保存的和现在的相减
+			redisC.Do("SET", key, v - hisdata) // 用历史保存的和现在的相减
 			redisC.Do("SET", hisKey, v)
 		}
 	}
@@ -186,12 +186,12 @@ func fiveMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 		}
 		key := "five|"+k
 		hisKey := "fivehis|" + k
-		u, _ := redis.Int64(redisC.Do("GET", hisKey))
-		if u > v{ // 重启后新获取的是会小于旧的累计的数据的， 进行重置
+		hisdata, _ := redis.Int64(redisC.Do("GET", hisKey))
+		if hisdata > v{ // 重启后新获取的是会小于旧的累计的数据的， 进行重置
 			redisC.Do("SET", key, v)
 			redisC.Do("SET", hisKey, v)
 		}else{
-			redisC.Do("SET", key, v - u)
+			redisC.Do("SET", key, v - hisdata)
 			redisC.Do("SET", hisKey, v)
 		}
 	}
