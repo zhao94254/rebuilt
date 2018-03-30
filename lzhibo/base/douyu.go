@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 	"github.com/gomodule/redigo/redis"
+	"net/http"
 )
 
 // 主要的处理逻辑
@@ -160,6 +161,12 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
 
 
 func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
+	if mapData["restart"] < time.Now().Unix(){
+		go getcallTask()
+		mapData["restart"] = time.Now().Unix()+60*10
+	}
+
+
 	fmt.Println("one count", mapData)
 	for k, v := range mapData{
 		if k == "one|timer" || k == "five|timer"{
@@ -195,4 +202,9 @@ func fiveMinData(mapData map[string]int64 ,redisC redis.Conn)  {
 			redisC.Do("SET", hisKey, v)
 		}
 	}
+}
+
+func getcallTask()  {
+	resp, _ := http.Get("http://127.0.0.1:5000/task") // 更新tasks
+	fmt.Println(resp)
 }

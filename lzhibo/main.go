@@ -29,19 +29,19 @@ func redisClient() redis.Conn {
 	return c
 }
 
+
 func getData()  {
 	fmt.Println("start")
 	count := newSafe()
 	count.Map["one|timer"] = time.Now().Unix()+60 // 保存数据
 	count.Map["five|timer"] = time.Now().Unix()+60*5 // 保存数据
-	timerB := time.Now().Unix()+60*30 // 重新跑任务
+	count.Map["restart"] = time.Now().Unix()+60*10
+	timerB := time.Now().Unix()+60*10 // 重新跑任务
 	first := true
 	for {
 		if time.Now().Unix() >= timerB || first{
-			resp, _ := http.Get(taskurl) // 更新tasks
-			fmt.Println(resp)
-			go longLink(count)
-			timerB = time.Now().Unix()+60*30
+			longLink(count)
+			timerB = time.Now().Unix()+60*10
 		}
 			first = false
 	}
