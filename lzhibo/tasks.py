@@ -6,7 +6,6 @@ import requests
 import json
 
 
-
 # directory: link image onlinenum directoryname
 
 # streamer : link image onlinenum streamername
@@ -31,11 +30,10 @@ class Douyu:
         self.baselink = "http://api.douyutv.com/api/v1/live/{}"
         self.load()
         self.parse_config()
-
-
+        self._cache_directory_key = "douyu|directory"
 
     def parse_config(self):
-        for i,j in Config["douyu"].items():
+        for i, j in Config["douyu"].items():
             setattr(self, i, j)
 
     def load(self):
@@ -48,20 +46,23 @@ class Douyu:
             self.base_data = json.loads(redis_client.get("douyu|basedata").decode())['data']
         self.parse_directory()
 
-
     def getonline(self):
         """ 解析用户数据"""
-        result = []
+        result = set()
+        directorys = set()
         for i in self.base_data:
+            directorys_cache = redis_client.get(self._cache_directory_key)
+            if directorys_cache is not None and i["short_name"] not in directorys_cache.encode():
+                continue # 如果不在缓存中，直接跳过
             res = requests.get(self.baselink.format(i['short_name'])).json()['data']
             if not isinstance(res, list):
                 continue
             self.directory_info[i['short_name']]['hots'] = sum([i['online'] for i in res])
-            redis_client.set("douyu|directorys", '|'.join(self.directory_info.keys())) # 加载所有频道的key
-            redis_client.set(i['short_name'], json.dumps(self.directory_info[i['short_name']]))# 加载频道信息
+            redis_client.set("douyu|directorys", '|'.join(self.directory_info.keys()))  # 加载所有频道的key
+            redis_client.set(i['short_name'], json.dumps(self.directory_info[i['short_name']]))  # 加载频道信息
             for j in res:
                 print("call")
-                if j['online'] > self.minnum: # 这里通过config来配置
+                if j['online'] > self.minnum:  # 这里通过config来配置
                     self.streammer_info[j['room_id']] = {
                         'roomid': j['room_id'],
                         'online': j['online'],
@@ -70,11 +71,12 @@ class Douyu:
                         'image': j['avatar_mid'],
                         'pindao': i
                     }
-                    redis_client.set(j['room_id'], json.dumps(self.streammer_info[j['room_id']])) # 加载房间信息
-
-                    result.append(j['room_id'])
+                    redis_client.set(j['room_id'], json.dumps(self.streammer_info[j['room_id']]))  # 加载房间信息
+                    directorys.add(i['short_name'])
+                    result.add(j['room_id'])
+        redis_client.setex(self._cache_directory_key, "|".join(directorys), 60*60*3)
+        redis_client.setex()
         return result
-
 
     def parse_directory(self):
         """ 解析频道相关"""
@@ -83,7 +85,7 @@ class Douyu:
                 'img': i['game_icon'],
                 'gname': i['game_name'],
                 'link': i['game_url'],
-                'num':0,
+                'num': 0,
             }
 
     def parse_streammer(self):
@@ -98,12 +100,8 @@ class Douyu:
             else:
                 res.append(j)
         res = '|'.join(res)
-        redis_client.set(self.taskname, res) # 加载所有的roomid
-        return redis_client.get(self.taskname) # decode 的时候通过分割 | 来实现
-
-
-
-
+        redis_client.set(self.taskname, res)  # 加载所有的roomid
+        return redis_client.get(self.taskname)  # decode 的时候通过分割 | 来实现
 
 
 if __name__ == '__main__':

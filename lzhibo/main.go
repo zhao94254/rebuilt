@@ -3,13 +3,18 @@ package main
 import (
 	"time"
 	"fmt"
-	"net/http"
 	"strings"
 	"./base"
 	"github.com/gomodule/redigo/redis"
 )
 
-const taskurl  = "http://127.0.0.1:5000/task"
+const (
+	oneTimer = 60
+	fiveTimer = 60*5
+	halfTimer = 60*10
+	getTaskTimer = 60*3
+
+)
 
 // 按照一分钟 五分钟 一个小时 这三个时长
 
@@ -33,25 +38,28 @@ func redisClient() redis.Conn {
 func getData()  {
 	fmt.Println("start")
 	count := newSafe()
-	count.Map["one|timer"] = time.Now().Unix()+60 // 保存数据
-	count.Map["five|timer"] = time.Now().Unix()+60*5 // 保存数据
-	count.Map["restart"] = time.Now().Unix()+60*10
-	timerB := time.Now().Unix()+60*10 // 重新跑任务
+	count.Map["one|timer"] = time.Now().Unix()+oneTimer // 保存数据
+	count.Map["five|timer"] = time.Now().Unix()+fiveTimer // 保存数据
+	count.Map["half|timer"] = time.Now().Unix()+halfTimer
+	count.Map["restart"] = time.Now().Unix()+getTaskTimer
+	reRunTask := time.Now().Unix()+getTaskTimer // 重新跑任务
 	first := true
 	for {
-		if time.Now().Unix() >= timerB || first{
-			longLink(count)
-			timerB = time.Now().Unix()+60*10
+		if time.Now().Unix() >= reRunTask || first{
+			go longLink(count)
+			reRunTask = time.Now().Unix()+getTaskTimer
 		}
 			first = false
 	}
 }
 
+
 func longLink(count *base.SafeMap)  {
-	fmt.Println("start longlink")
+	fmt.Println("start all longlink")
 	c  := redisClient()
 	ch := make(chan string)
 	rooms := getTask()
+
 	for _, i := range rooms{
 		go base.CountConnect(i, count, c)
 	}

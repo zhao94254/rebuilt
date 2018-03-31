@@ -18,33 +18,45 @@ import json
 
 app = Flask(__name__)
 
+
 @app.route('/task')
 def task():
     res = Douyu().gettasks()
     return res
 
+
 @app.route('/g/<string:key>')
 def data(key):
     return redis_client.get(key)
 
+
 @app.route("/keys")
 def keys():
     return str(redis_client.keys())
+
 
 @app.route("/onerank")
 def rank():
     data = sorted_data("one")
     return jsonify(data)
 
+
 @app.route("/fiverank")
 def frank():
     data = sorted_data("five")
     return jsonify(data)
 
-@app.route("/prank")
+@app.route("/halfrank")
+def hrank():
+    data = sorted_data("half")
+    return jsonify(data)
+
+
+@app.route("/directors")
 def prank():
     data = pdata()
     return jsonify(data)
+
 
 def sorted_data(long):
     _keys = redis_client.get("douyu|task").decode()
@@ -61,6 +73,7 @@ def sorted_data(long):
     data = sorted(data, key=lambda x: -x["user"]["hots"])
     return data
 
+
 def pdata():
     _keys = redis_client.get("douyu|directorys").decode()
     data = []
@@ -74,6 +87,7 @@ def pdata():
         tmp = {}
     data = sorted(data, key=lambda x: -x["directory"]["hots"])
     return data
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", debug=True)

@@ -15,57 +15,59 @@ import (
 // 主要的处理逻辑
 
 const (
-	BufferSize  = 1024
-	ServerAddr  = "openbarrage.douyutv.com:8601"
-	PostCode = 689
-	PullCode = 690
-	wtf = "asd"
+	BufferSize   = 1024
+	ServerAddr   = "openbarrage.douyutv.com:8601"
+	PostCode     = 689
+	PullCode     = 690
+	oneTimer     = 60
+	fiveTimer    = 60 * 5
+	getTaskTimer = 60 * 3
+	halfTimer    = 60 * 10
+	taskurl      = "http://127.0.0.1:5000/task"
 )
 
 func PostData(msg string) []byte {
 	// 构造需要发送的二进制数据
-	length := 9+len(msg) // 长度4字节 + 类型2字节 + 加密字段1字节 + 保留字段1字节 + 结尾字段1字节
+	length := 9 + len(msg) // 长度4字节 + 类型2字节 + 加密字段1字节 + 保留字段1字节 + 结尾字段1字节
 	buffer := bytes.NewBuffer([]byte{})
 	binary.Write(buffer, binary.LittleEndian, int32(length))
 	binary.Write(buffer, binary.LittleEndian, int32(length))
 	binary.Write(buffer, binary.LittleEndian, int16(PostCode))
-	binary.Write(buffer, binary.LittleEndian, int8( 0))
+	binary.Write(buffer, binary.LittleEndian, int8(0))
 	binary.Write(buffer, binary.LittleEndian, int8(0))
 	binary.Write(buffer, binary.LittleEndian, []byte(msg))
 	binary.Write(buffer, binary.LittleEndian, int8(0))
 	return buffer.Bytes()
 }
 
-func JoinRoom(roomid string)[]byte  {
+func JoinRoom(roomid string) []byte {
 	// 选择要链接的房间号
 	msg := fmt.Sprintf("type@=loginreq/roomid@=%s/", roomid)
 	return PostData(msg)
 }
 
-func JoinMsg(roomid string)[]byte{
+func JoinMsg(roomid string) []byte {
 	msg := fmt.Sprintf("type@=joingroup/rid@=%s/gid@=-9999/", roomid)
 	return PostData(msg)
 }
 
-
-func PreParse(conn net.Conn) (string, error){
+func PreParse(conn net.Conn) (string, error) {
 	var header = make([]byte, 12)
 	var buffer = make([]byte, BufferSize)
 	//var msgLen  int32
 	_, err := conn.Read(header)
-	if err != nil{
+	if err != nil {
 		return "", errors.New("预解析失败")
 	}
 	conn.Read(buffer)
 	return string(buffer), nil
 }
 
-
 func ParseData(conn net.Conn) map[string]interface{} {
 	// 解析， 将二进制数据转化为可读的
 	Parsed := make(map[string]interface{})
 	str, err := PreParse(conn)
-	if err != nil{
+	if err != nil {
 		// fmt.Println(err)
 		return nil
 	}
@@ -74,20 +76,20 @@ func ParseData(conn net.Conn) map[string]interface{} {
 	items := strings.Split(s, "/")
 	for _, str := range items {
 		k := strings.SplitN(str, "@=", 2)
-		if len(k) >1{
+		if len(k) > 1 {
 			Parsed[k[0]] = k[1]
 		}
 	}
 	return Parsed
 }
 
-func PreConn(roomid string) net.Conn  {
+func PreConn(roomid string) net.Conn {
 	buffer := make([]byte, BufferSize)
 	JoinData := JoinRoom(roomid)
 	JoinMsg := JoinMsg(roomid)
 	conn, _ := net.Dial("tcp", ServerAddr)
 	_, werr := conn.Write(JoinData)
-	if werr != nil{
+	if werr != nil {
 		fmt.Println(werr)
 	}
 	_, err := conn.Read(buffer)
@@ -98,59 +100,36 @@ func PreConn(roomid string) net.Conn  {
 	return conn
 }
 
-
-func Connect(roomid string)  {
+func CountConnect(roomid string, count *SafeMap, redisC redis.Conn) {
 	conn := PreConn(roomid)
 	timestamp := time.Now().Unix()
-	for  {
+	for {
 		parsed := ParseData(conn) // type: dgb - gift, chatmsg - danmu , uenter - enter
 		// nn - nickname  level  txt
-		if parsed == nil{
-			conn.Close()
-			break
-		}
-
-		if time.Now().Unix() - timestamp > 21{
+		if time.Now().Unix()-timestamp > 21 {
 			timestamp = time.Now().Unix()
 			_, err := conn.Write(PostData(fmt.Sprintf("type@=keeplive/tick@=%s/", timestamp)))
-			if err != nil{
-				fmt.Println("心跳失败")
-			}
-		}
-		if parsed["type"] == "chatmsg"{
-			fmt.Printf("user: %s  danmu: %s level: %s room: %s \n", parsed["nn"], parsed["txt"], parsed["level"], parsed["rid"])
-		}
-	}
-	conn.Close()
-}
-
-func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
-	conn := PreConn(roomid)
-	timestamp := time.Now().Unix()
-	for  {
-		parsed := ParseData(conn) // type: dgb - gift, chatmsg - danmu , uenter - enter
-		// nn - nickname  level  txt
-		if time.Now().Unix() - timestamp > 21{
-			timestamp = time.Now().Unix()
-			_, err := conn.Write(PostData(fmt.Sprintf("type@=keeplive/tick@=%s/", timestamp)))
-			if err != nil{
+			if err != nil {
 				conn.Close()
 				return
 			}
 		}
-		if parsed["type"] == "chatmsg"{
+		if parsed["type"] == "chatmsg" {
 			//fmt.Printf("user: %s  danmu: %s level: %s room: %s \n", parsed["nn"], parsed["txt"], parsed["level"], parsed["rid"])
 			key := fmt.Sprintf("%s", parsed["rid"])
 			count.add(key)
 		}
-
-		if count.readMap("one|timer") < time.Now().Unix(){ // 按照一分钟 五分钟 半个小时为维度进行保存
-			count.setValue("one|timer", time.Now().Unix()+60)
+		if count.readMap("one|timer") < time.Now().Unix() { // 按照一分钟 五分钟 半个小时为维度进行保存
+			count.setValue("one|timer", time.Now().Unix()+oneTimer)
 			oneMinData(count.Map, redisC)
 		}
-		if count.readMap("five|timer") < time.Now().Unix(){ // 按照一分钟 五分钟 半个小时为维度进行保存
-			count.setValue("five|timer", time.Now().Unix()+60*5)
+		if count.readMap("five|timer") < time.Now().Unix() { // 按照一分钟 五分钟 半个小时为维度进行保存
+			count.setValue("five|timer", time.Now().Unix()+fiveTimer)
 			fiveMinData(count.Map, redisC)
+		}
+		if count.readMap("half|timer") < time.Now().Unix() { // 按照一分钟 五分钟 半个小时为维度进行保存
+			count.setValue("half|timer", time.Now().Unix()+halfTimer)
+			halfHourData(count, redisC)
 		}
 
 	}
@@ -159,52 +138,63 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn)  {
 
 // 将字典的数据保存进去。。
 
-
-func oneMinData(mapData map[string]int64 ,redisC redis.Conn)  {
-	if mapData["restart"] < time.Now().Unix(){
+func oneMinData(mapData map[string]int64, redisC redis.Conn) {
+	if mapData["restart"] < time.Now().Unix() {
 		go getcallTask()
-		mapData["restart"] = time.Now().Unix()+60*10
+		mapData["restart"] = time.Now().Unix() + getTaskTimer
 	}
-
 
 	fmt.Println("one count", mapData)
-	for k, v := range mapData{
-		if k == "one|timer" || k == "five|timer"{
+	for k, v := range mapData {
+		if k == "one|timer" || k == "five|timer" || k == "half|timer" {
 			continue
 		}
-		key := "one|"+k
+		key := "one|" + k
 		hisKey := "onehis|" + k
 		hisdata, _ := redis.Int64(redisC.Do("GET", hisKey))
-		if hisdata > v{ // 重启后新获取的是会小于旧的累计的数据的， 进行重置
+		if hisdata > v { // 重启后新获取的是会小于旧的累计的数据的， 进行重置
 			redisC.Do("SET", key, v) // 保存历史的数据
 			redisC.Do("SET", hisKey, v)
-		}else{
-			redisC.Do("SET", key, v - hisdata) // 用历史保存的和现在的相减
+		} else {
+			redisC.Do("SET", key, v-hisdata) // 用历史保存的和现在的相减
 			redisC.Do("SET", hisKey, v)
 		}
 	}
 }
 
-func fiveMinData(mapData map[string]int64 ,redisC redis.Conn)  {
+func fiveMinData(mapData map[string]int64, redisC redis.Conn) {
 	fmt.Println("five count", mapData)
-	for k, v := range mapData{
-		if k == "one|timer" || k == "five|timer"{
+	for k, v := range mapData {
+		if k == "one|timer" || k == "five|timer" || k == "half|timer" {
 			continue
 		}
-		key := "five|"+k
+		key := "five|" + k
 		hisKey := "fivehis|" + k
 		hisdata, _ := redis.Int64(redisC.Do("GET", hisKey))
-		if hisdata > v{ // 重启后新获取的是会小于旧的累计的数据的， 进行重置
+		if hisdata > v { // 重启后新获取的是会小于旧的累计的数据的， 进行重置
 			redisC.Do("SET", key, v)
 			redisC.Do("SET", hisKey, v)
-		}else{
-			redisC.Do("SET", key, v - hisdata)
+		} else {
+			redisC.Do("SET", key, v-hisdata)
 			redisC.Do("SET", hisKey, v)
 		}
 	}
 }
 
-func getcallTask()  {
-	resp, _ := http.Get("http://127.0.0.1:5000/task") // 更新tasks
+func halfHourData(count *SafeMap, redisC redis.Conn) {
+	fmt.Println("half count", count.Map)
+	for k, v := range count.Map {
+		if k == "one|timer" || k == "five|timer" || k == "half|timer" || k == "restart" {
+			continue
+		}
+		key := "half|" + k
+		redisC.Do("SET", key, v)
+		count.setValue(k, 0)
+	}
+
+}
+
+func getcallTask() {
+	resp, _ := http.Get(taskurl) // 更新tasks
 	fmt.Println(resp)
 }
