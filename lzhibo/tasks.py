@@ -52,7 +52,7 @@ class Douyu:
         directorys = set()
         for i in self.base_data:
             directorys_cache = redis_client.get(self._cache_directory_key)
-            if directorys_cache is not None and i["short_name"] not in directorys_cache.encode():
+            if directorys_cache is not None and i["short_name"] not in directorys_cache.decode():
                 continue # 如果不在缓存中，直接跳过
             res = requests.get(self.baselink.format(i['short_name'])).json()['data']
             if not isinstance(res, list):
@@ -74,8 +74,7 @@ class Douyu:
                     redis_client.set(j['room_id'], json.dumps(self.streammer_info[j['room_id']]))  # 加载房间信息
                     directorys.add(i['short_name'])
                     result.add(j['room_id'])
-        redis_client.setex(self._cache_directory_key, "|".join(directorys), 60*60*3)
-        redis_client.setex()
+        redis_client.setex(self._cache_directory_key, 60*60*3, "|".join(directorys))
         return result
 
     def parse_directory(self):
