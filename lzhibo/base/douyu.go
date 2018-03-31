@@ -21,8 +21,8 @@ const (
 	PullCode     = 690
 	oneTimer     = 60
 	fiveTimer    = 60 * 5
-	getTaskTimer = 60 * 3
-	halfTimer    = 60 * 10
+	getTaskTimer = 60 * 31
+	halfTimer    = 60 * 30
 	taskurl      = "http://127.0.0.1:5000/task"
 )
 
@@ -144,7 +144,7 @@ func oneMinData(mapData map[string]int64, redisC redis.Conn) {
 		mapData["restart"] = time.Now().Unix() + getTaskTimer
 	}
 
-	fmt.Println("one count", mapData)
+	//fmt.Println("one count", mapData)
 	for k, v := range mapData {
 		if k == "one|timer" || k == "five|timer" || k == "half|timer" {
 			continue

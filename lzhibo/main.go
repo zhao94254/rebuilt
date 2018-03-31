@@ -11,8 +11,8 @@ import (
 const (
 	oneTimer = 60
 	fiveTimer = 60*5
-	halfTimer = 60*10
-	getTaskTimer = 60*3
+	halfTimer = 60*30
+	getTaskTimer = 60*31
 
 )
 
