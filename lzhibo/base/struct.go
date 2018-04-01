@@ -2,15 +2,11 @@ package base
 
 import "sync"
 
-
 // 线程安全的map
 type SafeMap struct {
 	sync.RWMutex
 	Map map[string]int64
 }
-
-
-
 
 func (sm *SafeMap) readMap(key string) int64 {
 	sm.RLock()
@@ -19,7 +15,7 @@ func (sm *SafeMap) readMap(key string) int64 {
 	return value
 }
 
-func (sm *SafeMap) add(key string,) {
+func (sm *SafeMap) add(key string, ) {
 	sm.Lock()
 	sm.Map[key]++
 	sm.Unlock()
@@ -31,3 +27,8 @@ func (sm *SafeMap) setValue(key string, value int64) {
 	sm.Unlock()
 }
 
+func NewSafe() *SafeMap {
+	sm := new(SafeMap)
+	sm.Map = make(map[string]int64)
+	return sm
+}

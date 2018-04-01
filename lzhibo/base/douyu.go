@@ -13,17 +13,7 @@ import (
 
 // 主要的处理逻辑
 
-const (
-	BufferSize   = 1024
-	ServerAddr   = "openbarrage.douyutv.com:8601"
-	PostCode     = 689
-	PullCode     = 690
-	oneTimer     = 60
-	fiveTimer    = 60 * 5
-	getTaskTimer = 60 * 30
-	halfTimer    = 60 * 30
-	taskurl      = "http://127.0.0.1:5000/task"
-)
+
 
 func PostData(msg string) []byte {
 	// 构造需要发送的二进制数据
@@ -103,10 +93,6 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn, ch chan stri
 	conn := PreConn(roomid)
 	timestamp := time.Now().Unix()
 	for {
-		if count.Map["restart"] < time.Now().Unix(){
-			count.setValue("restart",time.Now().Unix() + getTaskTimer)
-			ch <- ""
-		}
 		parsed := ParseData(conn) // type: dgb - gift, chatmsg - danmu , uenter - enter
 		// nn - nickname  level  txt
 		if time.Now().Unix()-timestamp > 21 {
@@ -123,16 +109,20 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn, ch chan stri
 			count.add(key)
 		}
 		if count.readMap("one|timer") < time.Now().Unix() { // 按照一分钟 五分钟 半个小时为维度进行保存
-			count.setValue("one|timer", time.Now().Unix()+oneTimer)
+			count.setValue("one|timer", time.Now().Unix()+OneTimer)
 			oneMinData(count.Map, redisC)
 		}
 		if count.readMap("five|timer") < time.Now().Unix() { // 按照一分钟 五分钟 半个小时为维度进行保存
-			count.setValue("five|timer", time.Now().Unix()+fiveTimer)
+			count.setValue("five|timer", time.Now().Unix()+FiveTimer)
 			fiveMinData(count.Map, redisC)
 		}
 		if count.readMap("half|timer") < time.Now().Unix() { // 按照一分钟 五分钟 半个小时为维度进行保存
-			count.setValue("half|timer", time.Now().Unix()+halfTimer)
+			count.setValue("half|timer", time.Now().Unix()+HalfTimer)
 			halfHourData(count, redisC)
+		}
+		if count.Map["restart"] < time.Now().Unix(){
+			count.setValue("restart",time.Now().Unix() + GetTaskTimer)
+			ch <- ""
 		}
 
 	}
@@ -142,6 +132,7 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn, ch chan stri
 // 将字典的数据保存进去。。
 
 func oneMinData(mapData map[string]int64, redisC redis.Conn) {
+	fmt.Println("start one set")
 	for k, v := range mapData {
 		if k == "one|timer" || k == "five|timer" || k == "half|timer" {
 			continue
@@ -149,6 +140,7 @@ func oneMinData(mapData map[string]int64, redisC redis.Conn) {
 		key := "one|" + k
 		hisKey := "onehis|" + k
 		hisdata, _ := redis.Int64(redisC.Do("GET", hisKey))
+		fmt.Println(hisdata, v)
 		if hisdata > v { // 重启后新获取的是会小于旧的累计的数据的， 进行重置
 			redisC.Do("SET", key, v) // 保存历史的数据
 			redisC.Do("SET", hisKey, v)
@@ -160,7 +152,7 @@ func oneMinData(mapData map[string]int64, redisC redis.Conn) {
 }
 
 func fiveMinData(mapData map[string]int64, redisC redis.Conn) {
-	fmt.Println("five count", mapData)
+	fmt.Println("start five set")
 	for k, v := range mapData {
 		if k == "one|timer" || k == "five|timer" || k == "half|timer" {
 			continue
@@ -168,6 +160,7 @@ func fiveMinData(mapData map[string]int64, redisC redis.Conn) {
 		key := "five|" + k
 		hisKey := "fivehis|" + k
 		hisdata, _ := redis.Int64(redisC.Do("GET", hisKey))
+		fmt.Println(hisdata, v)
 		if hisdata > v { // 重启后新获取的是会小于旧的累计的数据的， 进行重置
 			redisC.Do("SET", key, v)
 			redisC.Do("SET", hisKey, v)
