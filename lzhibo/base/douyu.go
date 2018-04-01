@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 	"github.com/gomodule/redigo/redis"
-	"net/http"
 )
 
 // 主要的处理逻辑
@@ -21,7 +20,7 @@ const (
 	PullCode     = 690
 	oneTimer     = 60
 	fiveTimer    = 60 * 5
-	getTaskTimer = 60 * 31
+	getTaskTimer = 60 * 30
 	halfTimer    = 60 * 30
 	taskurl      = "http://127.0.0.1:5000/task"
 )
@@ -100,10 +99,14 @@ func PreConn(roomid string) net.Conn {
 	return conn
 }
 
-func CountConnect(roomid string, count *SafeMap, redisC redis.Conn) {
+func CountConnect(roomid string, count *SafeMap, redisC redis.Conn, ch chan string) {
 	conn := PreConn(roomid)
 	timestamp := time.Now().Unix()
 	for {
+		if count.Map["restart"] < time.Now().Unix(){
+			count.setValue("restart",time.Now().Unix() + getTaskTimer)
+			ch <- ""
+		}
 		parsed := ParseData(conn) // type: dgb - gift, chatmsg - danmu , uenter - enter
 		// nn - nickname  level  txt
 		if time.Now().Unix()-timestamp > 21 {
@@ -139,12 +142,6 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn) {
 // 将字典的数据保存进去。。
 
 func oneMinData(mapData map[string]int64, redisC redis.Conn) {
-	if mapData["restart"] < time.Now().Unix() {
-		go getcallTask()
-		mapData["restart"] = time.Now().Unix() + getTaskTimer
-	}
-
-	//fmt.Println("one count", mapData)
 	for k, v := range mapData {
 		if k == "one|timer" || k == "five|timer" || k == "half|timer" {
 			continue
@@ -191,10 +188,4 @@ func halfHourData(count *SafeMap, redisC redis.Conn) {
 		redisC.Do("SET", key, v)
 		count.setValue(k, 0)
 	}
-
-}
-
-func getcallTask() {
-	resp, _ := http.Get(taskurl) // 更新tasks
-	fmt.Println(resp)
 }

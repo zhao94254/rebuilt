@@ -6,14 +6,15 @@ import (
 	"strings"
 	"./base"
 	"github.com/gomodule/redigo/redis"
+	"net/http"
 )
 
 const (
 	oneTimer = 60
 	fiveTimer = 60*5
 	halfTimer = 60*30
-	getTaskTimer = 60*31
-
+	getTaskTimer = 60*30
+	taskurl      = "http://127.0.0.1:5000/task"
 )
 
 // 按照一分钟 五分钟 一个小时 这三个时长
@@ -42,14 +43,10 @@ func getData()  {
 	count.Map["five|timer"] = time.Now().Unix()+fiveTimer // 保存数据
 	count.Map["half|timer"] = time.Now().Unix()+halfTimer
 	count.Map["restart"] = time.Now().Unix()+getTaskTimer
-	reRunTask := time.Now().Unix()+getTaskTimer // 重新跑任务
-	first := true
 	for {
-		if time.Now().Unix() >= reRunTask || first{
-			go longLink(count)
-			reRunTask = time.Now().Unix()+getTaskTimer
-		}
-			first = false
+			resp, _ := http.Get(taskurl) // 更新tasks
+			fmt.Println(resp)
+			longLink(count)
 	}
 }
 
@@ -61,10 +58,11 @@ func longLink(count *base.SafeMap)  {
 	rooms := getTask()
 
 	for _, i := range rooms{
-		go base.CountConnect(i, count, c)
+		go base.CountConnect(i, count, c, ch)
 	}
 	for i:=1;i<len(rooms) ;i++  {
-		<-ch
+		fmt.Println(<-ch)
+		return
 	}
 }
 
