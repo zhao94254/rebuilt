@@ -95,6 +95,7 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn, ch chan stri
 	for {
 		parsed := ParseData(conn) // type: dgb - gift, chatmsg - danmu , uenter - enter
 		// nn - nickname  level  txt
+		defer conn.Close()
 		if time.Now().Unix()-timestamp > 21 {
 			timestamp = time.Now().Unix()
 			_, err := conn.Write(PostData(fmt.Sprintf("type@=keeplive/tick@=%s/", timestamp)))
@@ -126,7 +127,6 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn, ch chan stri
 		}
 
 	}
-	conn.Close()
 }
 
 // 将字典的数据保存进去。。
@@ -140,7 +140,6 @@ func oneMinData(mapData map[string]int64, redisC redis.Conn) {
 		key := "one|" + k
 		hisKey := "onehis|" + k
 		hisdata, _ := redis.Int64(redisC.Do("GET", hisKey))
-		fmt.Println(hisdata, v)
 		if hisdata > v { // 重启后新获取的是会小于旧的累计的数据的， 进行重置
 			redisC.Do("SET", key, v) // 保存历史的数据
 			redisC.Do("SET", hisKey, v)
