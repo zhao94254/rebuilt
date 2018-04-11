@@ -36,6 +36,6 @@ func longLink(count *base.SafeMap) {
 	}
 	for i := 1; i < len(rooms); i++ {
 		fmt.Println(<-ch)
+		return
 	}
-	return
 }

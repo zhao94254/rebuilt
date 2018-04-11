@@ -92,10 +92,10 @@ func PreConn(roomid string) net.Conn {
 func CountConnect(roomid string, count *SafeMap, redisC redis.Conn, ch chan string) {
 	conn := PreConn(roomid)
 	timestamp := time.Now().Unix()
+	defer conn.Close()
 	for {
 		parsed := ParseData(conn) // type: dgb - gift, chatmsg - danmu , uenter - enter
-		// nn - nickname  level  txt
-		defer conn.Close()
+		// nn - nickname  level  tx
 		if time.Now().Unix()-timestamp > 21 {
 			timestamp = time.Now().Unix()
 			_, err := conn.Write(PostData(fmt.Sprintf("type@=keeplive/tick@=%s/", timestamp)))
@@ -132,7 +132,6 @@ func CountConnect(roomid string, count *SafeMap, redisC redis.Conn, ch chan stri
 // 将字典的数据保存进去。。
 
 func oneMinData(mapData map[string]int64, redisC redis.Conn) {
-	fmt.Println("start one set")
 	for k, v := range mapData {
 		if k == "one|timer" || k == "five|timer" || k == "half|timer" {
 			continue
@@ -151,7 +150,6 @@ func oneMinData(mapData map[string]int64, redisC redis.Conn) {
 }
 
 func fiveMinData(mapData map[string]int64, redisC redis.Conn) {
-	fmt.Println("start five set")
 	for k, v := range mapData {
 		if k == "one|timer" || k == "five|timer" || k == "half|timer" {
 			continue
